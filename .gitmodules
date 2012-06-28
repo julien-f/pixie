@@ -1,0 +1,3 @@
+[submodule "lib/psl"]
+	path = lib/psl
+	url = https://github.com/julien-f/psl.git

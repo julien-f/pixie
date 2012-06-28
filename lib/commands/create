@@ -1,0 +1,142 @@
+#!/bin/sh
+
+################################################################################
+
+SCRIPT_DIR=$(dirname "$(readlink --canonicalize "$(which "$0")")")
+. "$SCRIPT_DIR/../common.sh"
+
+################################################################################
+
+# name_validator VALUE
+name_validator()
+{
+	psl -v "$1" match_re '^[-.a-z0-9]+$' || {
+		psl_println 'authorized characters: “a” to “z”, “0” to “9”, “-” and “.”'
+		return 1
+	}
+}
+
+# vers_validator VALUE
+vers_validator()
+{
+	name_validator "$1"
+}
+
+
+# vers_validator VALUE
+arch_validator()
+{
+	psl -v "$1" match_re '^[a-z0-9]+$' || {
+		psl_println 'authorized characters:  “a” to “z” and “0” to “9”'
+		return 1
+	}
+}
+
+prompt name 'Name?' name_validator
+prompt vers 'Version?' vers_validator 0.1-1
+prompt arch 'Architecture?' arch_validator all
+psl_println
+
+prompt maintainer 'Maintainer?' '' \
+	"${DEBFULLNAME:-$(id -un)} <${DEBEMAIL:-$(id -un)@$(hostname --fqdn)}>"
+psl_println
+
+prompt depends    'Depends?'    '' ''
+prompt recommends 'Recommends?' '' ''
+prompt suggests   'Suggests?'   '' ''
+
+################################################################################
+
+# helper field value default
+helper()
+{
+	if [ "$2" ]
+	then
+		psl_print "$1: $2"
+	else
+		psl_print "# $1: $3"
+	fi
+}
+
+package=$(fmt_pkg_name "$name" "$vers" "$arch")
+recipe=${RECIPES:-$SCRIPT_DIR/recipes}/$package
+
+mkdir --parents "$recipe"
+
+cat <<EOF > "$recipe/build"
+#!/bin/sh
+
+# This script should install any files in
+# \$DESTDIR as if it was the root directory.
+#
+# The following environment variables are available:
+# - \$ARCHITECTURE: the architecture of this package;
+# - \$DESTDIR     : /see above/;
+# - \$NAME        : the name of this package;
+# - \$RECIPE      : the path of this recipe;
+# - \$VERSION     : the version of this package.
+#
+# Because this script is runned with “fakeroot”, it can do
+# every file manipulation “root” can (“chown”, etc.).
+#
+# One last thing, this script is run in a temporary
+# directory which will be automatically removed when no
+# longer necessary.
+
+# Fatal error if an untested command failed.
+set -e
+
+# Fatal error if usage of an undefined variable.
+set -u
+
+echo 'Nothing to do for this package.'
+EOF
+chmod +x "$recipe/build"
+
+cat <<EOF > "$recipe/control"
+# This control file's syntax is similar to the one used in
+# Debian except you may use empty lines and only the fields
+# described below are supported.
+#
+# Required fields:
+# - Description;
+# - Maintainer.
+#
+# Optional fields:
+# - Breaks;
+# - Conflicts;
+# - Depends;
+# - Homepage;
+# - Maintainer;
+# - Pre-Depends;
+# - Priority;
+# - Provides;
+# - Recommends;
+# - Section;
+# - Suggests;
+# - Tag.
+#
+# See http://man.cx/deb-control
+
+Section:    misc
+Priority:   optional
+Maintainer: $maintainer
+
+# Homepage:    <enter URL here; no default>
+
+# Pre-Depends: <comma-separated list of packages>
+$(helper 'Depends' "$depends" '    <comma-separated list of packages>')
+$(helper 'Recommends' "$recommends" ' <comma-separated list of packages>')
+$(helper 'Suggests' "$suggests" '   <comma-separated list of packages>')
+
+# Provides:  <comma-separated list of packages>
+# Replaces:  <comma-separated list of packages>
+# Conflicts: <comma-separated list of packages>
+# Breaks:    <comma-separated list of packages>
+
+Description: Short description (max 60 chars) goes here!
+ Long description goes there!
+ .
+ Each line is indented with one space and empty lines
+ are written with a single dot.
+EOF

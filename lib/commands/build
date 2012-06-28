@@ -1,0 +1,34 @@
+#!/bin/sh
+
+################################################################################
+
+SCRIPT_DIR=$(dirname "$(readlink --canonicalize "$(which "$0")")")
+. "$SCRIPT_DIR/../common.sh"
+
+################################################################################
+
+if [ $# -eq 0 ]
+then
+	cat <<EOF >&2
+Usage: $0 RECIPE...
+
+RECIPE  The path of a recipe.
+
+This program builds packages from recipes.
+
+By default, the packages are put in
+  $REPOSITORY
+
+But this can be changed by defining the “\$REPOSITORY” environment
+variable.
+EOF
+
+	exit 1
+fi
+
+for psl
+do
+	psl_realpath
+
+	build "$psl"
+done

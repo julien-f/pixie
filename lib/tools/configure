@@ -1,0 +1,81 @@
+#!/bin/sh
+
+# Fatal error if an untested command failed.
+set -e
+
+# Fatal error if usage of an undefined variable.
+set -u
+
+usage()
+{
+	cat <<EOF
+Usage: $0 < FROM > TO
+       $0 --symlink FROM TO
+
+This program configure files based on the current environment.
+
+It replaces “@VARIABLE@” by their value in the environment.
+
+FROM  The source file (often suffixed with “.in”).
+TO    The target file (NOT its parent directory!).
+
+--symlink  In this mode, the path of the symbolic link FROM is
+           configured and used to create the symbolic link TO.
+EOF
+}
+
+# Prevents a path from being interpreted as an option.
+#
+# This is done by prepending the path with “./” if it starts with a dash.
+#
+# protect PATH
+protect()
+{
+	[ "x$(printf '%c' "$1")" = x- ] && print ./
+
+	printf '%s' "$1"
+}
+
+# configure
+configure()
+{
+	printf '%s' "$_configure_content" | perl -pe 's/@([a-z0-9_]+)@/$ENV{$1}/ig'
+}
+
+# Gets the raw output of a command (i.e. even trailing whitespaces).
+#
+# The result is stored in “$_configure_content”.
+#
+# get_raw_output COMMAND [ARG...]
+get_raw_output()
+{
+	_configure_content=$("$@"; printf _)
+	_configure_content=${_configure_content%_}
+}
+
+if [ $# -ne 0 ] && [ $# -ne 3 ]
+then
+	usage >&2
+	exit 1
+fi
+
+if [ $# -eq 3 ]
+then
+	[ "$1" = "--symlink" ] || {
+		usage >&2
+		exit 1
+	}
+
+	_configure_symlink=1
+	shift
+fi
+
+if [ "${_configure_symlink:-}" ]
+then
+	get_raw_output perl -e 'print readlink $ARGV[0]' -- "$(protect "$1")" \
+		&& get_raw_output configure \
+		&& ln --symbolic --no-target-directory "$(protect "$_configure_content")" "$(protect "$2")"
+else
+	get_raw_output cat \
+		&& configure
+fi
