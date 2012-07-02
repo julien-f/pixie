@@ -84,7 +84,7 @@ EOF
 
 # Builds a package from a recipe.
 #
-# build RECIPE
+# build RECIPE REPOSITORY
 build()
 (
 	$psl_local \
@@ -99,6 +99,8 @@ build()
 	psl=$1; psl_protect; recipe=$psl
 	psl_basename; package=$psl
 	split_pkg_name "$package" name vers arch
+
+	repository=$2
 
 	# Creation of the base directory.
 	tmpdir=$(mktemp --directory)
@@ -128,7 +130,7 @@ build()
 			VERSION=$vers \
 			USERNAME=Nobody \
 			EMAIL=nobody@nowhere.tld \
-			configure < "$SCRIPT_DIR"/.internal/resources/changelog.in > debian/changelog
+			configure < "$SCRIPT_DIR"/../resources/changelog.in > debian/changelog
 	fi
 
 	fakeroot -s fakeroot.db true
@@ -162,25 +164,16 @@ build()
 	fakeroot -i fakeroot.db -s fakeroot.db dh_installdeb
 	cp --target-directory=debian/"$name"/DEBIAN debian/control #fakeroot -i fakeroot.db -s fakeroot.db dh_gencontrol
 	fakeroot -i fakeroot.db -s fakeroot.db dh_md5sums
-	mkdir --parents "$REPOSITORY"
-	fakeroot -i fakeroot.db -s fakeroot.db dh_builddeb --destdir="$REPOSITORY"
+	mkdir --parents "$repository"
+	fakeroot -i fakeroot.db -s fakeroot.db dh_builddeb --destdir="$repository"
 	rm --force --recursive "$tmpdir"
 )
 
 # Refreshs the repository.
 #
-# refresh
+# refresh REPOSITORY.
 refresh()
 (
-	cd "$REPOSITORY" \
+	cd "$1" \
 		&& dpkg-scanpackages . | gzip > Packages.gz
 )
-
-################################################################################
-
-if [ "${REPOSITORY:-}" ]
-then
-	psl=$REPOSITORY; psl_realpath; REPOSITORY=$psl
-else
-	REPOSITORY=$SCRIPT_DIR/repository
-fi

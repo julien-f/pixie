@@ -7,28 +7,28 @@ SCRIPT_DIR=$(dirname "$(readlink --canonicalize "$(which "$0")")")
 
 ################################################################################
 
-if [ $# -eq 0 ]
+if [ $# -lt 2 ]
 then
 	cat <<EOF >&2
-Usage: $0 RECIPE...
+Usage: $0 --help
+       $0 REPOSITORY RECIPE...
 
-RECIPE  The path of a recipe.
+Builds package(s) from RECIPE(s) to REPOSITORY.
 
-This program builds packages from recipes.
+--help        Prints this help message
 
-By default, the packages are put in
-  $REPOSITORY
+REPOSITORY    The path of the directory where to put the built packages.
 
-But this can be changed by defining the “\$REPOSITORY” environment
-variable.
+RECIPE        The path of a directory containing a package's recipe.
 EOF
-
 	exit 1
 fi
+
+psl=$1; psl_realpath; repository=$psl; shift
 
 for psl
 do
 	psl_realpath
 
-	build "$psl"
+	build "$psl" "$repository"
 done

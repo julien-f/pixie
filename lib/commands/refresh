@@ -7,4 +7,24 @@ SCRIPT_DIR=$(dirname "$(readlink --canonicalize "$(which "$0")")")
 
 ################################################################################
 
-refresh
+if [ $# -eq 0 ] || [ "$1" = '--help' ] || [ "$1" = "-h" ]
+then
+	cat <<EOF >&2
+Usage: $0 --help
+       $0 REPOSITORY
+
+Scans REPOSITORY and creates the “Packages.gz” index file.
+
+--help        Prints this help message
+
+REPOSITORY    The path of the directory to scan for changes.
+EOF
+	exit 1
+fi
+
+if ! [ -d "$1" ]
+then
+	psl_fatal "this is not a valid repository: $1"
+fi
+
+refresh "$1"

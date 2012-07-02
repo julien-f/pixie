@@ -7,6 +7,28 @@ SCRIPT_DIR=$(dirname "$(readlink --canonicalize "$(which "$0")")")
 
 ################################################################################
 
+if [ $# -eq 0 ] || [ "$1" = '--help' ] || [ "$1" = "-h" ]
+then
+	cat <<EOF >&2
+Usage: $0 --help
+       $0 PARENT
+
+Creates a new recipe in the PARENT directory.
+
+--help    Prints this help message
+
+PARENT    The path of the directory where the recipe must be created.
+EOF
+	exit 1
+fi
+
+if ! [ -d "$1" ]
+then
+	psl_fatal "this is not a valid directory: $1"
+fi
+
+################################################################################
+
 # name_validator VALUE
 name_validator()
 {
@@ -59,9 +81,9 @@ helper()
 }
 
 package=$(fmt_pkg_name "$name" "$vers" "$arch")
-recipe=${RECIPES:-$SCRIPT_DIR/recipes}/$package
+recipe=$1/$package
 
-mkdir --parents "$recipe"
+mkdir "$recipe"
 
 cat <<EOF > "$recipe/build"
 #!/bin/sh
