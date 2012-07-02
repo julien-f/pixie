@@ -23,8 +23,8 @@ repository.
 For instance, if you want to make your packages available throught a web server:
 
 	REPOSITORY=/var/www/repository
-	pixie build "$REPOSITORY" recipes/*
-	pixie refresh "$REPOSITORY"
+	pixie build --repository="$REPOSITORY" recipes/*
+	pixie refresh --repository="$REPOSITORY"
 
 
 # APT configuration.

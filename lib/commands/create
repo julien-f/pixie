@@ -7,24 +7,41 @@ SCRIPT_DIR=$(dirname "$(readlink --canonicalize "$(which "$0")")")
 
 ################################################################################
 
-if [ $# -eq 0 ] || [ "$1" = '--help' ] || [ "$1" = "-h" ]
-then
-	cat <<EOF >&2
+directory=./recipes
+
+usage()
+{
+	cat <<EOF
 Usage: $0 --help
-       $0 PARENT
+       $0 [--directory=DIRECTORY]
 
-Creates a new recipe in the PARENT directory.
+Creates a new recipe in the DIRECTORY directory.
 
---help    Prints this help message
+--help       Prints this help message
 
-PARENT    The path of the directory where the recipe must be created.
+DIRECTORY    The path of the directory where the recipe must be created
+             (default is “$directory”).
 EOF
-	exit 1
-fi
+}
 
-if ! [ -d "$1" ]
+for arg
+do
+	case "$arg" in
+		'--help'|'-h')
+			usage
+			return
+			;;
+		'--directory='*)
+			directory=${arg#'--directory='}
+			;;
+		*)
+			psl_fatal "Invalid option “$arg”. Try $0 --help"
+	esac
+done
+
+if ! [ -d "$directory" ]
 then
-	psl_fatal "this is not a valid directory: $1"
+	psl_fatal "this is not a valid directory: $directory"
 fi
 
 ################################################################################
@@ -81,7 +98,7 @@ helper()
 }
 
 package=$(fmt_pkg_name "$name" "$vers" "$arch")
-recipe=$1/$package
+recipe=$directory/$package
 
 mkdir "$recipe"
 

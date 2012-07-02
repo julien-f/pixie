@@ -7,24 +7,41 @@ SCRIPT_DIR=$(dirname "$(readlink --canonicalize "$(which "$0")")")
 
 ################################################################################
 
-if [ $# -eq 0 ] || [ "$1" = '--help' ] || [ "$1" = "-h" ]
-then
-	cat <<EOF >&2
+repository=./repository
+
+usage()
+{
+	cat <<EOF
 Usage: $0 --help
-       $0 REPOSITORY
+       $0 [--repository=REPOSITORY]
 
 Scans REPOSITORY and creates the “Packages.gz” index file.
 
 --help        Prints this help message
 
-REPOSITORY    The path of the directory to scan for changes.
+REPOSITORY    The path of the directory to scan for changes (default is
+              “$repository”).
 EOF
-	exit 1
-fi
+}
 
-if ! [ -d "$1" ]
+for arg
+do
+	case "$arg" in
+		'--help'|'-h')
+			usage
+			return
+			;;
+		'--repository='*)
+			repository=${arg#'--repository='}
+			;;
+		*)
+			psl_fatal "Invalid option “$arg”. Try $0 --help"
+	esac
+done
+
+if ! [ -d "$repository" ]
 then
-	psl_fatal "this is not a valid repository: $1"
+	psl_fatal "this is not a valid repository: $repository"
 fi
 
-refresh "$1"
+refresh "$repository"
