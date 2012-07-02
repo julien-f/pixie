@@ -17,14 +17,14 @@ Please note that some of the “recipes” may have more dependencies (such as
 
 # Repository creation.
 
-The `build` script is used to build all the packages and to create the
+The `pixie build` command is used to build all the packages and to create the
 repository.
 
 For instance, if you want to make your packages available throught a web server:
 
-	export REPOSITORY=/var/www/repository
-	./build recipes/*
-	./refresh
+	REPOSITORY=/var/www/repository
+	pixie build "$REPOSITORY" recipes/*
+	pixie refresh "$REPOSITORY"
 
 
 # APT configuration.
@@ -60,6 +60,6 @@ This program is runned in a temporary directory and should not bother cleaning
 after itself. It also has access to its recipe directory through the `$RECIPE`
 variable.
 
-To create a new recipe, you may use the `create` command which will ask some
-information and then builds a valid skeleton (which is enough for basic
+To create a new recipe, you may use the `pixie create` command which will ask
+some information and then builds a valid skeleton (which is enough for basic
 meta-packages).
