@@ -3,11 +3,17 @@ COMMON_SH=1
 
 ################################################################################
 
-# Fatal error if an untested command failed.
-set -e
+# Fatal error if an untested command failed or if an
+# undefined variable is used.
+set -e -u
 
-# Fatal error if usage of an undefined variable.
-set -u
+#
+if [ "$AKULA_COMMAND" ]
+then
+	COMMAND="$AKULA_COMMAND $AKULA_SUBCOMMAND"
+else
+	COMMAND=${0##*/}
+fi
 
 # Adds “tools/” to the $PATH.
 PATH=$SCRIPT_DIR/../tools${PATH:+:$PATH}
@@ -54,118 +60,120 @@ prompt()
 
 ################################################################################
 
-# fmt_pkg_name NAME VERSION ARCHITECTURE
-fmt_pkg_name()
-{
-	psl_print "${1}_${2}_${3}"
-}
-
 # Splits a full package name to its components.
 #
-# A full package name has the following format: NAME_VERSION[_ARCHITURE].
+# A full package name has the following format: NAME[_ARCHITURE].
 #
 # If there is no “_ARCHITECTURE” part, the architecture is set to “all”.
 #
-# split_pkg_name PACKAGE @NAME @VERSION @ARCHITECTURE
+# split_pkg_name PACKAGE @NAME @ARCHITECTURE
 split_pkg_name()
 {
 	$psl_local psl
 
-	IFS=_ read -r "$2" "$3" psl <<EOF
+	IFS=_ read -r "$2" psl <<EOF
 $1
 EOF
 
 	# Sets a default value for the architecture.
 	: ${psl:=all}
 
-	# Assigns this value to the variable named "$4".
-	psl_set_value "$4"
+	# Assigns this value to the variable named "$3".
+	psl_set_value "$3"
 }
 
 # Builds a package from a recipe.
 #
-# build RECIPE REPOSITORY
+# build <recipe> <repository>
 build()
 (
 	$psl_local \
 		psl \
-		recipe package \
+		recipe \
 		name vers arch \
-		tmpdir
+		workdir builddir dhdir tmpdir \
+		fakerootdb
 
-	[ -f "$1/control" ] \
-		|| psl_fatal "this is not a valid recipe: $recipe"
+	psl=$1; psl_realpath; recipe=$psl
+	psl_basename; split_pkg_name "$psl" name arch
+	read vers < "$recipe"/@version
+	psl=$2; psl_realpath; repository=$psl
 
-	psl=$1; psl_protect; recipe=$psl
-	psl_basename; package=$psl
-	split_pkg_name "$package" name vers arch
+	[ -f "$recipe"/@control ] \
+		|| psl_fatal "not a valid recipe: $recipe"
+	[ -d "$repository" ] \
+		|| psl_fatal "not a valid directory: $repository"
 
-	repository=$2
+	# Creation of the temporary working directory.
+	workdir=$(mktemp --directory)
 
-	# Creation of the base directory.
-	tmpdir=$(mktemp --directory)
-	cd "$tmpdir"
-	mkdir --parents debian
+	# Build directory.
+	builddir=$workdir/debian/$name
+	mkdir --parents "$builddir"
 
-	# Creation of the compat file.
-	psl_println 9 > debian/compat
+	# Debhelper directory.
+	dhdir=$workdir/debian
+	mkdir --parents "$dhdir"
+	psl_println 9 > "$dhdir"/compat
 
 	# Creation of the control file.
 	{
-		printf '%s\n' \
+		# Adds automatic entries.
+		psl_println \
 			"Package:      $name" \
 			"Version:      $vers" \
 			"Architecture: $arch"
 
-		cat "$recipe/control" | perl -ne 's/^#.*//; print unless /^$/'
-	} > debian/control
+		# Removes comments and blank lines.
+		cat "$recipe"/@control | perl -ne 's/^#.*//; print unless /^$/'
+	} > "$dhdir"/control
 
 	# Copy or creation of the changelog.
-	if [ -f "$recipe/changelog" ]
+	if [ -f "$recipe"/@changelog ]
 	then
-		cp --target-directory=debian "$recipe/changelog"
+		cp --target-directory="$dhdir" "$recipe"/@changelog
 	else
 		DATE=$(date --rfc-2822) \
 			PACKAGE=$name \
 			VERSION=$vers \
 			USERNAME=Nobody \
 			EMAIL=nobody@nowhere.tld \
-			configure < "$SCRIPT_DIR"/../resources/changelog.in > debian/changelog
+			configure < "$SCRIPT_DIR"/../resources/changelog.in > "$dhdir"/changelog
 	fi
 
-	fakeroot -s fakeroot.db true
-	#dh_testdir
-	#fakeroot -s fakeroot.db dh_prep
+	# Create the Fakeroot database.
+	fakerootdb=$workdir/fakeroot.db
+	touch "$fakerootdb"
 
-	# Runs the build file.
-	if [ -f "$recipe/build" ]
+	# Runs the build program.
+	if [ -f "$recipe"/@build ]
 	then
-		(
-			ARCHITECTURE=$arch
-			DESTDIR=$tmpdir/debian/$name
-			NAME=$name
-			RECIPE=$recipe
-			VERSION=$vers
-			export ARCHITECTURE DESTDIR NAME RECIPE VERSION
+		tmpdir=$workdir/tmp
+		mkdir "$tmpdir"
+		cd "$tmpdir"
 
-			mkdir --parents "$tmpdir/build"
-			cd "$tmpdir/build"
-
-			exec fakeroot \
-				-i "$tmpdir/fakeroot.db" \
-				-s "$tmpdir/fakeroot.db" \
-				"$recipe/build"
-		)
+		ARCHITECTURE=$arch \
+			DESTDIR=$builddir \
+			NAME=$name \
+			RECIPE=$recipe \
+			VERSION=$vers \
+			fakeroot -i "$fakerootdb" -s "$fakerootdb" "$recipe"/@build
 	fi
 
-	fakeroot -i fakeroot.db -s fakeroot.db dh_installchangelogs
-	fakeroot -i fakeroot.db -s fakeroot.db dh_compress
-	fakeroot -i fakeroot.db -s fakeroot.db dh_fixperms
-	fakeroot -i fakeroot.db -s fakeroot.db dh_installdeb
-	cp --target-directory=debian/"$name"/DEBIAN debian/control #fakeroot -i fakeroot.db -s fakeroot.db dh_gencontrol
-	fakeroot -i fakeroot.db -s fakeroot.db dh_md5sums
-	mkdir --parents "$repository"
-	fakeroot -i fakeroot.db -s fakeroot.db dh_builddeb --destdir="$repository"
+	cd "$workdir"
+
+	fakeroot -i "$fakerootdb" -s "$fakerootdb" dh_installchangelogs
+	fakeroot -i "$fakerootdb" -s "$fakerootdb" dh_compress
+	fakeroot -i "$fakerootdb" -s "$fakerootdb" dh_fixperms
+	fakeroot -i "$fakerootdb" -s "$fakerootdb" dh_installdeb
+
+
+	#fakeroot -i "$fakerootdb" -s "$fakerootdb" dh_gencontrol
+	cp --target-directory="$dhdir/$name"/DEBIAN "$dhdir"/control
+
+	fakeroot -i "$fakerootdb" -s "$fakerootdb" dh_md5sums
+	fakeroot -i "$fakerootdb" -s "$fakerootdb" dh_builddeb --destdir="$repository"
+
 	rm --force --recursive "$tmpdir"
 )
 

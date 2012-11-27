@@ -12,15 +12,12 @@ repository=./repository
 usage()
 {
 	cat <<EOF
-Usage: $0 --help
-       $0 [--repository=REPOSITORY]
+Usage: $COMMAND [--repository=<repository>]
 
-Scans REPOSITORY and creates the “Packages.gz” index file.
+Scans <repository> and creates the “Packages.gz” index file.
 
---help        Prints this help message
-
-REPOSITORY    The path of the directory to scan for changes (default is
-              “$repository”).
+<repository>    The path of the directory to scan for changes (default is
+                “$repository”).
 EOF
 }
 
@@ -35,7 +32,7 @@ do
 			repository=${arg#'--repository='}
 			;;
 		*)
-			psl_fatal "Invalid option “$arg”. Try $0 --help"
+			psl_fatal "Invalid option “$arg”. Try $COMMAND --help"
 	esac
 done
 

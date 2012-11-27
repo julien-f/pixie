@@ -12,17 +12,13 @@ repository=./repository
 usage()
 {
 	cat <<EOF
-Usage: $0 --help
-       $0 [--repository=REPOSITORY] RECIPE...
+Usage: $COMMAND [--repository=<repository>] <recipe>...
 
-Builds package(s) from RECIPE(s) to REPOSITORY.
+Builds package(s) from <recipe>(s) to <repository>.
 
---help        Prints this help message
-
-REPOSITORY    The path of the directory where to put the built packages.
-
-RECIPE        The path of a directory containing a package's recipe (default is
-              “$repository”).
+<repository>    The path of the directory where to put the built packages.
+<recipe>        The path of a directory containing a package's recipe (default is
+                “$repository”).
 EOF
 }
 
@@ -38,7 +34,7 @@ do
 			shift
 			;;
 		-*)
-			psl_fatal "Invalid option “$arg”. Try $0 --help"
+			psl_fatal "Invalid option “$arg”. Try $COMMAND --help"
 			;;
 		*)
 			break
@@ -47,15 +43,8 @@ done
 
 if [ $# -eq 0 ]
 then
-	psl_fatal 'missing RECIPE(s)'
+	psl_fatal 'missing <recipe>(s)'
 fi
-
-if ! [ -d "$repository" ]
-then
-	psl_fatal "this is not a valid repository: $repository"
-fi
-
-psl=$repository; psl_realpath; repository=$psl
 
 for psl
 do

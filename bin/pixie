@@ -1,14 +1,10 @@
-#!/bin/sh
+#!/bin/sh -eu
 
 # Makes pixie runnable from the repository.
 dir=$(dirname "$0")/../lib/commands
 if [ -d "$dir" ]
 then
-	AKULA_PATH=$dir
-	export AKULA_PATH
+	opt=--exec-path=$dir
 fi
 
-AKULA_COMMAND=pixie
-export AKULA_COMMAND
-
-exec akula "$@"
+_AKULA_COMMAND=pixie exec akula ${opt+"$opt"} "$@"

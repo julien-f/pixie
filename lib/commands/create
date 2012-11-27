@@ -12,15 +12,12 @@ directory=./recipes
 usage()
 {
 	cat <<EOF
-Usage: $0 --help
-       $0 [--directory=DIRECTORY]
+Usage: $COMMAND [--directory=<directory>]
 
-Creates a new recipe in the DIRECTORY directory.
+Creates a new recipe in the <directory> directory.
 
---help       Prints this help message
-
-DIRECTORY    The path of the directory where the recipe must be created
-             (default is “$directory”).
+<directory>    The path of the directory where the recipe must be created
+               (default is “$directory”).
 EOF
 }
 
@@ -35,7 +32,7 @@ do
 			directory=${arg#'--directory='}
 			;;
 		*)
-			psl_fatal "Invalid option “$arg”. Try $0 --help"
+			psl_fatal "Invalid option “$arg”. Try $COMMAND --help"
 	esac
 done
 
@@ -72,7 +69,7 @@ arch_validator()
 }
 
 prompt name 'Name?' name_validator
-prompt vers 'Version?' vers_validator 0.1-1
+prompt vers 'Version?' vers_validator 0.1
 prompt arch 'Architecture?' arch_validator all
 psl_println
 
@@ -97,13 +94,20 @@ helper()
 	fi
 }
 
-package=$(fmt_pkg_name "$name" "$vers" "$arch")
+package=$name
+# Only appends the architecture if necessary.
+[ "$arch" = all ] || package=${package}_$arch
+
 recipe=$directory/$package
 
-mkdir "$recipe"
+mkdir --parents "$recipe"
 
-cat <<EOF > "$recipe/build"
+psl_println "$vers" > "$recipe"/@version
+
+cat <<EOF > "$recipe/@build.sample"
 #!/bin/sh
+
+# $name
 
 # This script should install any files in
 # \$DESTDIR as if it was the root directory.
@@ -122,38 +126,44 @@ cat <<EOF > "$recipe/build"
 # directory which will be automatically removed when no
 # longer necessary.
 
-# Fatal error if an untested command failed.
-set -e
+########################################
 
-# Fatal error if usage of an undefined variable.
-set -u
+# Fatal error if an untested command failed or if an
+# undefined variable is used.
+set -e -u
 
-echo 'Nothing to do for this package.'
+########################################
+
+# You may set the \$GROUP and \$SHORT_NAME variable if this
+# package is part of a group.
+#
+# The following lines set them from the package name.
+case "\$NAME" in
+	*-*)
+		GROUP=\${NAME%%-*}
+		SHORT_NAME=\${NAME#*-}
+		;;
+esac
+
+# This files contains various variables and functions
+# definitions.
+. "\$RECIPE"/../.common/common.sh
+
+########################################
+
+# Downloads the sources from git.
+#git_dl "<host>/\${GROUP:+\$GROUP/}\$SHORT_NAME"
+
+# The rest is up to you ;)
 EOF
-chmod +x "$recipe/build"
+chmod +x "$recipe/@build.sample"
 
-cat <<EOF > "$recipe/control"
+cat <<EOF > "$recipe/@control"
+# $name
+
 # This control file's syntax is similar to the one used in
-# Debian except you may use empty lines and only the fields
-# described below are supported.
-#
-# Required fields:
-# - Description;
-# - Maintainer.
-#
-# Optional fields:
-# - Breaks;
-# - Conflicts;
-# - Depends;
-# - Homepage;
-# - Maintainer;
-# - Pre-Depends;
-# - Priority;
-# - Provides;
-# - Recommends;
-# - Section;
-# - Suggests;
-# - Tag.
+# Debian except you may use empty lines and only the present
+# fields are supported.
 #
 # See http://man.cx/deb-control
 
@@ -161,7 +171,8 @@ Section:    misc
 Priority:   optional
 Maintainer: $maintainer
 
-# Homepage:    <enter URL here; no default>
+# Homepage: <enter URL here; no default>
+# Tag:      <comma-separated list of tags>
 
 # Pre-Depends: <comma-separated list of packages>
 $(helper 'Depends' "$depends" '    <comma-separated list of packages>')

@@ -43,13 +43,13 @@ If the repository is on a web server:
 
 # What does a recipe look like?
 
-A recipe is a directory named *`name`\_`version`\_`architecture`* which contains
+A recipe is a directory named *`name`\_`architecture`* which contains
 all the necessary files for creating a package.
 
-The first of these files is `control`, it contains various entries describing
+The first of these files is `@control`, it contains various entries describing
 the package.
 
-A recipe MAY also contain a `build` program which will be called prior
+A recipe MAY also contain a `@build` program which will be called prior
 constructing the package, its tasks are to:
 
 - retrieve the source files;
@@ -63,3 +63,19 @@ variable.
 To create a new recipe, you may use the `pixie create` command which will ask
 some information and then builds a valid skeleton (which is enough for basic
 meta-packages).
+
+# Working directory layout
+
+	[working directory]/
+	 │  Used to override configuration files.
+	 │
+	 ├─ debian/
+	 │  │  Used by debhelper to build the package.
+	 │  │
+	 │  └─ $NAME/DEBIAN
+	 │      This is $DESTDIR, where your script should
+	 │      install its files.
+	 │
+	 └─ tmp/
+	      Working directory of the build script.
+	      You may use anyway you want.
