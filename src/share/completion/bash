@@ -1,0 +1,5 @@
+# Loads akula completion if necessary.
+complete -p akula &> /dev/null || _completion_loader akula
+
+# Uses the same completion for pixie.
+eval "$(complete -p akula) pixie"

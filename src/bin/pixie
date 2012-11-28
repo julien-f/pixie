@@ -1,7 +1,7 @@
 #!/bin/sh -eu
 
 # Makes pixie runnable from the repository.
-dir=$(dirname "$0")/../lib/commands
+dir=$(dirname "$0")/../share/commands
 if [ -d "$dir" ]
 then
 	opt=--exec-path=$dir
